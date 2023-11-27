@@ -49,8 +49,9 @@ def report(raceid):
     resp = urlopen(url)
     zipfile = ZipFile(BytesIO(resp.read()))
     results = json.loads(zipfile.open("data.json").read())
+    # print(zipfile.open("data.json").read())
 
-    race_type = results['shortDescription'][-2:]
+    race_type = results['disciplineId']
     # sex = results['shortDescription'][0]
     top20_ending = []
     top10_ski = []
@@ -58,7 +59,8 @@ def report(raceid):
     top10_shoot = []
     not_in_race = []
     dnf = [0, "0", "DSQ", "DNS", "DNF"]
-    is_relay = race_type in ['RL","SR']
+    is_relay = race_type in ["RL", "SR", "MR"]
+
     if is_relay:
         athlete_key = "relayTeams"
     else:
@@ -67,9 +69,9 @@ def report(raceid):
     has_penalty = race_type in ['SP","IN']
     for rez in results[athlete_key]:
         if is_relay:
-            loops = rez['individualShots'].size * 5 - rez['hits']
-            spares = rez['shots'] - rez['individualShots'].size * 5
-            shooting = f"{rez['hits']}(+{spares})/{rez['individualShots'].size * 5}"
+            loops = len(rez['individualShots']) * 5 - rez['hits']
+            spares = rez['shots'] - len(rez['individualShots']) * 5
+            shooting = f"{rez['hits']}(+{spares})/{len(rez['individualShots']) * 5}"
             if loops > 0:
                 shooting = f"{shooting} (+{loops} loop)"
         else:
@@ -129,10 +131,10 @@ def report(raceid):
     out += reddit_format("Top 10 fastest skiers:", sorted(top10_ski, key=lambda d: d['rank']))
     if len(not_in_race) > 0:
         out += reddit_format_dsq("Dit not Finish or start:", not_in_race, results['juryDecisions'])
-
-    out += '\n\n --------- \n\n ^(This is a bot for the biathlon subreddit, source code : https://github.com/biabot/reddit_biabot)'
     """
-    	out+= world_cup_standing(sex.upcase) unless %w[RL SR].include?(race_type)
+        out+= world_cup_standing(sex.upcase) unless %w[RL SR].include?(race_type)
+        out+= reddit_format_dsq("Dit not Finish or start:", not_in_race,results['juryDecisions']) if not_in_race.size > 0
+        print(out)
     """
     return out
 
