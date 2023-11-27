@@ -1,15 +1,15 @@
 import praw
+import requests
 from io import BytesIO
 from zipfile import ZipFile
 from urllib.request import urlopen
+import gzip
 import os
 import json
 import time
-from datetime import timezone
-import datetime
+from datetime import datetime, timedelta, timezone
 import re
 import sys
-
 
 def main():
 	reddit = praw.Reddit(client_id=os.environ['REDDIT_CLIENT_ID'],
@@ -18,14 +18,15 @@ def main():
                      username=os.environ['REDDIT_USERNAME'],
                      password=os.environ['REDDIT_PASSWORD'])
 
+
 	sys.stdout.flush()
 	for comment in reddit.subreddit("biathlon").stream.comments():
 		if "!biathlonResult" in comment.body:
-			print('found !biathlonResult')
 			raceregex = re.compile(r"(BT[A-X0-9]+)")
 			mo1 = raceregex.search(comment.body)
+			print('found !biathlonResult'+mo1.group(1))
 			if mo1.group(1):
-				older_than_five = datetime.datetime.now(timezone.utc).timestamp()-500
+				older_than_five = datetime.now(timezone.utc).timestamp()-500
 				if comment.created_utc > older_than_five:
 					print('for race '+mo1.group(1))
 					#print(report(mo1.group(1)))
@@ -37,14 +38,14 @@ def main():
 				else:
 					print('too old')
 
-
 def report(raceId):
 	url = f'https://www.realbiathlon.com/useddatacurrent/races/new/Races_{raceId}.zip'
 	resp = urlopen(url)
 	zipfile = ZipFile(BytesIO(resp.read()))
 	results = json.loads(zipfile.open("data.json").read())
+	#print(zipfile.open("data.json").read())
 
-	race_type = results['shortDescription'][-2:]
+	race_type = results['disciplineId']
 	sex = results['shortDescription'][0]
 	top20_ending = []
 	top10_ski = []
@@ -52,7 +53,8 @@ def report(raceId):
 	top10_shoot = []
 	not_in_race = []
 	dnf = [0,"0","DSQ","DNS","DNF"]
-	is_relay =	race_type in ['RL","SR']
+	is_relay = race_type in ["RL","SR", "MR"]
+
 	if is_relay:
 		athlete_key = "relayTeams"
 	else:
@@ -61,9 +63,9 @@ def report(raceId):
 	has_penalty = race_type in ['SP","IN']
 	for rez in results[athlete_key]:
 		if is_relay:
-			loops = rez['individualShots'].size*5-rez['hits']
-			spares = rez['shots']-rez['individualShots'].size*5
-			shooting = f"{rez['hits']}(+{spares})/{rez['individualShots'].size*5}"
+			loops = len(rez['individualShots'])*5-rez['hits']
+			spares = rez['shots']-len(rez['individualShots'])*5
+			shooting = f"{rez['hits']}(+{spares})/{len(rez['individualShots'])*5}"
 			if loops > 0:
 				shooting = f"{shooting} (+{loops} loop)"
 		else:
@@ -72,6 +74,7 @@ def report(raceId):
 			not_in_race.append(dict({'rank': rez['resultString'],'name':rez['nameMeta'],'time': rez['totalTime'],'country': rez[country_key],'shooting':shooting}))
 		elif int(rez['rank']) <= 20:
 			top20_ending.append(dict({'rank': int(rez['rank']),'name':rez['nameMeta'],'time': rez['totalTime'],'country': rez[country_key],'shooting':shooting}))
+
 		for meta in rez['metaStats']:
 			category = meta.get('category', '')
 			if meta['rank'] == 1:
@@ -81,6 +84,7 @@ def report(raceId):
 
 			if category and category == "Course Total Time":
 				if meta['rank'] <= 10 and meta['rank'] not in dnf:
+					print(meta['rank'])
 					top10_ski.append(dict({'rank': meta['rank'],'name':rez['nameMeta'],'time': endtime,'country': rez[country_key],'shooting':shooting}))
 			elif category and category == "Range Total Time":
 				if meta['rank'] <= 10 and meta['rank'] not in dnf:
@@ -106,6 +110,7 @@ def report(raceId):
 				if meta['rank'] <= 10 and meta['rank'] not in dnf:
 					top10_shoot.append(dict({'rank': meta['rank'],'name':rez['nameMeta'],'time': meta['value'],'country': rez[country_key],'shooting':shooting}))
 
+	print("here3 ?")
 	out = weather(results)
 	out+= podium(sorted(top20_ending, key=lambda d: d['rank']))
 	out+= reddit_format("The top 20 results from "+results['shortDescription'], sorted(top20_ending, key=lambda d: d['rank']))
@@ -114,16 +119,17 @@ def report(raceId):
 	out+= reddit_format("Top 10 fastest skiers:", sorted(top10_ski, key=lambda d: d['rank']))
 	if len(not_in_race) > 0:
 		out+= reddit_format_dsq("Dit not Finish or start:", not_in_race,results['juryDecisions'])
+	print(out)
 	return out
 
 """
 	out+= world_cup_standing(sex.upcase) unless %w[RL SR].include?(race_type)
+	out+= reddit_format_dsq("Dit not Finish or start:", not_in_race,results['juryDecisions']) if not_in_race.size > 0
+	print(out)
 """
-
 
 def weather(data):
 	return f"The weather at the time of the race: Air temp {data['weather']['afterStart']['airTemperature']}°C, Snow temp {data['weather']['afterStart']['snowTemperature']}°C , wind at range {data['weather']['afterStart']['wind']}\n\n"
-
 
 def podium(data):
 	out = "\n\nToday's Podium :\n\n"
@@ -136,6 +142,7 @@ def podium(data):
 
 
 def reddit_format(title,data,shooting = False,is_relay = False,penalty=False):
+	print(title)
 	out = f"**{title}**\n"
 	out+="\n"
 	if shooting:
@@ -176,7 +183,5 @@ def reddit_format_dsq(title,data,jury=""):
 	out+="&#x200B;\n"
 	return(out)
 
-
 if __name__ == "__main__":
 	main()
-
