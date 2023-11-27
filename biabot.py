@@ -4,8 +4,7 @@ from zipfile import ZipFile
 from urllib.request import urlopen
 import json
 import time
-from datetime import timezone
-import datetime
+from datetime import datetime, timezone
 import re
 import sys
 import configparser
@@ -30,8 +29,9 @@ def main():
             print('found !biathlonResult')
             raceregex = re.compile(r"(BT[A-X0-9]+)")
             mo1 = raceregex.search(comment.body)
+            print('found !biathlonResult' + mo1.group(1))
             if mo1.group(1):
-                older_than_five = datetime.datetime.now(timezone.utc).timestamp() - 500
+                older_than_five = datetime.now(timezone.utc).timestamp() - 500
                 if comment.created_utc > older_than_five:
                     print('for race ' + mo1.group(1))
                     # print(report(mo1.group(1)))
