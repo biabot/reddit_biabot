@@ -129,7 +129,7 @@ def report(raceid):
     out += reddit_format("Top 10 fastest on the range:", sorted(top10_range, key=lambda d: d['rank']), 1, is_relay,
                          has_penalty)
     out += reddit_format("Top 10 fastest skiers:", sorted(top10_ski, key=lambda d: d['rank']))
-    if len(not_in_race) > 0:
+    if len(not_in_race) > 0 :
         out += reddit_format_dsq("Dit not Finish or start:", not_in_race, results['juryDecisions'])
     """
         out+= world_cup_standing(sex.upcase) unless %w[RL SR].include?(race_type)
