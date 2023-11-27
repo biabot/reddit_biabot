@@ -123,7 +123,7 @@ def report(raceid):
 
     out = weather(results)
     out += podium(sorted(top20_ending, key=lambda d: d['rank']))
-    out += reddit_format("The top 20 results from " + results['shortDescription'],
+    out += reddit_format( "The top 20 results from " + results['shortDescription'],
                          sorted(top20_ending, key=lambda d: d['rank']))
     out += reddit_format("Top 10 fastest shooters:", sorted(top10_shoot, key=lambda d: d['rank']), 1, is_relay)
     out += reddit_format("Top 10 fastest on the range:", sorted(top10_range, key=lambda d: d['rank']), 1, is_relay,
