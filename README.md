@@ -10,3 +10,5 @@ password=XXXXX
 username=XXXX
 user_agent=XXXX
 ```
+
+There is a sample Json file with the information I used, this was a single relay so it may change depending on the race type, feel free to use it !
