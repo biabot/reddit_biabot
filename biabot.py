@@ -27,7 +27,7 @@ def main():
     for comment in reddit.subreddit("biathlon").stream.comments():
         if "!biathlonResult" in comment.body:
             print('found !biathlonResult')
-            raceregex = re.compile(r"(BT[A-X0-9]+)")
+            raceregex = re.compile(r"(BT[A-X0-9_]+)")
             mo1 = raceregex.search(comment.body)
             print('found !biathlonResult' + mo1.group(1))
             if mo1.group(1):
