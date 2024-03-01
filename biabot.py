@@ -132,6 +132,8 @@ def report(raceId, url):
     out += reddit_format("Top 10 fastest skiers:", sorted(top10_ski, key=lambda d: d['rank']))
     if len(not_in_race) > 0:
         out += reddit_format_dsq("Dit not Finish or start:", not_in_race, results['juryDecisions'])
+    out += ("\n\n------\n\n^^I'm ^^just ^^a ^^bot,"
+            " ^^https://github.com/biabot/reddit_biabot ^^if ^^you ^^want ^^to ^^know ^^more")
 
     return out
 
