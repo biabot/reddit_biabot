@@ -1,9 +1,11 @@
 certifi==2024.2.2
 charset-normalizer==2.0.9
 idna==3.3
+load-dotenv==0.1.0
 peewee==3.14.8
 praw==7.5.0
 prawcore==2.3.0
+python-dotenv==1.0.1
 requests==2.31.0
 update-checker==0.18.0
 urllib3==1.26.15
