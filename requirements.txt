@@ -1,10 +1,10 @@
-certifi==2023.11.17
+certifi==2024.2.2
 charset-normalizer==2.0.9
 idna==3.3
 peewee==3.14.8
-praw==7.7.1
+praw==7.5.0
 prawcore==2.3.0
 requests==2.31.0
 update-checker==0.18.0
-urllib3==1.26.7
+urllib3==1.26.15
 websocket-client==1.2.3

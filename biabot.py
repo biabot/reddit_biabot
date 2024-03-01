@@ -1,42 +1,37 @@
 import praw
-from io import BytesIO
-from zipfile import ZipFile
-from urllib.request import urlopen
+import requests
+import os
 import json
 import time
-from datetime import datetime, timezone
+from datetime import timezone
+import datetime
+from datetime import datetime
 import re
 import sys
-import configparser
+from dotenv import load_dotenv
 
 
 def main():
-    config = configparser.ConfigParser()
-    config.read('./praw.ini')
+    load_dotenv()
+    reddit = praw.Reddit(client_id=os.environ['REDDIT_CLIENT_ID'],
+                         client_secret=os.environ['REDDIT_CLIENT_SECRET'],
+                         user_agent=os.environ['REDDIT_USER_AGENT'],
+                         username=os.environ['REDDIT_USERNAME'],
+                         password=os.environ['REDDIT_PASSWORD'])
 
-    reddit_credentials = {
-        'client_id': config.get('biabot', 'client_id'),
-        'client_secret': config.get('biabot', 'client_secret'),
-        'password': config.get('biabot', 'password'),
-        'username': config.get('biabot', 'username'),
-        'user_agent': config.get('biabot', 'user_agent')
-    }
-
-    reddit = praw.Reddit(**reddit_credentials)
     sys.stdout.flush()
     for comment in reddit.subreddit("biathlon").stream.comments():
         if "!biathlonResult" in comment.body:
             print('found !biathlonResult')
             raceregex = re.compile(r"(BT[A-X0-9_]+)")
             mo1 = raceregex.search(comment.body)
-            print('found !biathlonResult' + mo1.group(1))
             if mo1.group(1):
                 older_than_five = datetime.now(timezone.utc).timestamp() - 500
                 if comment.created_utc > older_than_five:
                     print('for race ' + mo1.group(1))
-                    # print(report(mo1.group(1)))
+                    # print(report(mo1.group(1), os.environ['SOURCE_URL']))
                     try:
-                        comment.reply(report(mo1.group(1)))
+                        comment.reply(report(mo1.group(1), os.environ['SOURCE_URL']))
                         print('output finished for ' + mo1.group(1))
                     except:
                         print("An exception occurred")
@@ -44,29 +39,31 @@ def main():
                     print('too old')
 
 
-def report(raceid):
-    url = f'https://www.realbiathlon.com/useddatacurrent/races/new/Races_{raceid}.zip'
-    resp = urlopen(url)
-    zipfile = ZipFile(BytesIO(resp.read()))
-    results = json.loads(zipfile.open("data.json").read())
-    # print(zipfile.open("data.json").read())
+def report(raceId, url):
+    form_data = {'operation': "query",
+                 'filter': '{"raceId":"' + raceId + '"}',
+                 'options': '{"limit":1}',
+                 'projection': '{}',
+                 'namespace': 'Results.Races'}
 
-    race_type = results['disciplineId']
-    # sex = results['shortDescription'][0]
+    server = requests.post(url, data=form_data)
+    results = json.loads(server.text)[0]
+
+    race_type = results['raceId'][-2:]
     top20_ending = []
     top10_ski = []
     top10_range = []
     top10_shoot = []
     not_in_race = []
     dnf = [0, "0", "DSQ", "DNS", "DNF"]
-    is_relay = race_type in ["RL", "SR", "MR"]
-
+    is_relay = race_type in ['RL', 'SR']
+    print(race_type)
     if is_relay:
         athlete_key = "relayTeams"
     else:
         athlete_key = "athletes"
     country_key = "nat"  # is_relay ? "nat" : "nation"
-    has_penalty = race_type in ['SP","IN']
+    has_penalty = race_type in ['SP', 'IN']
     for rez in results[athlete_key]:
         if is_relay:
             loops = len(rez['individualShots']) * 5 - rez['hits']
@@ -121,7 +118,11 @@ def report(raceid):
                     top10_shoot.append(dict({'rank': meta['rank'], 'name': rez['nameMeta'], 'time': meta['value'],
                                              'country': rez[country_key], 'shooting': shooting}))
 
-    out = weather(results)
+    out = ("Welcome to the stats for the " + results['shortDescription'] +
+           ' in ' + results['eventOrganizer'] +
+           ' on this ' + datetime.utcfromtimestamp(results['time']).strftime('%d %B %Y') +
+           '\n\n')
+    out += weather(results)
     out += podium(sorted(top20_ending, key=lambda d: d['rank']))
     out += reddit_format("The top 20 results from " + results['shortDescription'],
                          sorted(top20_ending, key=lambda d: d['rank']))
@@ -131,11 +132,7 @@ def report(raceid):
     out += reddit_format("Top 10 fastest skiers:", sorted(top10_ski, key=lambda d: d['rank']))
     if len(not_in_race) > 0:
         out += reddit_format_dsq("Dit not Finish or start:", not_in_race, results['juryDecisions'])
-    """
-        out+= world_cup_standing(sex.upcase) unless %w[RL SR].include?(race_type)
-        out+= reddit_format_dsq("Dit not Finish or start:", not_in_race,results['juryDecisions']) if not_in_race.size > 0
-        print(out)
-    """
+
     return out
 
 
