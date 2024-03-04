@@ -9,10 +9,13 @@ REDDIT_USER_AGENT="XXXXXXX"
 REDDIT_USERNAME="XXXXXXX"
 REDDIT_PASSWORD="XXXXXXX"
 SOURCE_URL="XXXXXXX"
+SOURCE_RACE_URL="XXXXXXX"
 ```
 
 There is a sample Json file with the information I used, this was a single relay, so it may change depending on the race type, feel free to use it !
 
 I try to keep the source of the data secret, so they don't change, if you care I can tell you in message
 
-added docker support because why not
+added docker support because why not.
+
+Adding race thread to use in cron task everyday.
