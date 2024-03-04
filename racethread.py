@@ -8,10 +8,12 @@ import sys
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
 import re
+import time
 
 
 
 def main():
+    print("start race thread at : " + str(time.time()))
     load_dotenv()
     reddit = praw.Reddit(client_id=os.environ['REDDIT_CLIENT_ID'],
                          client_secret=os.environ['REDDIT_CLIENT_SECRET'],
@@ -27,21 +29,22 @@ def main():
     for rez in jsonResponse["athletesList"]:
         # is in GMT
         raceTime = datetime.utcfromtimestamp(rez['epoch']).strftime('%d/%m/%Y')
-        nowTime = (datetime.now(timezone.utc) - timedelta(days=0)).strftime('%d/%m/%Y')
+        nowTime = (datetime.now(timezone.utc) - timedelta(days=2)).strftime('%d/%m/%Y')
 
         if rez['eventClass'] in ['BTSWRLCP', 'BTSWRLCH']:
             if raceTime == nowTime:
                 rez['eventDescription'] = rez['eventDescription'].replace('BMW ', '').replace('IBU ', '').replace(' Biathlon', '')
                 title = "Race Thread: "+ rez['eventDescription'] +" "+ jsonResponse['seasonId'][:2] + "/"+ jsonResponse['seasonId'][2:] + " "+rez['eventOrganizer']+" - "+rez['shortDescription']+""
-                title = re.sub(' [1-9]+(\.)?([0-9]) km', '', title)
+                title = re.sub(' [1-9x]+(\.)?([0-9]) km', '', title)
                 body = makeRaceThread(rez)
                 body += getRanking(rez, os.environ['SOURCE_URL'])
                 # reddit.subreddit('biathlon').submit(title, body, "", "92defafc-b47c-11e6-a893-0e403872dda2", "Race Thread")
                 reddit.validate_on_submit = 1
                 # reddit.subreddit('testingground4bots').submit(title, body, "", "7c7255be-02b3-11eb-95d1-0e921f8587e3", "Meta")
                 print("posted "+ title)
-                # return
+                return
 
+    print("end race thread at : " + str(time.time()))
 
 
 def makeRaceThread(raceInfo):
@@ -89,13 +92,22 @@ def getRanking(raceInfo, url):
 
     for rez in ranking['scores']:
         if rez['rank'] <= 10:
-            rankDif = str(rez["rankDiff"])
-            if rankDif == "None":
-                rankDif = "0"
+            rankDif = rez["rankDiff"]
+            if str(rankDif) == "None":
+                rankDif = 0
+            if rankDif*-1 > 0:
+                rankDif = "+" + str(rankDif*-1)
+            else:
+                rankDif = str(rankDif*-1)
+
+            if rez['rank'] == 1:
+                bib = "🔴"
+            else:
+                bib = ""
             if category == "Team":
                 text += "|"+str(rez['rank'])+"|"+rez["country"]+"|"+str(rez['score'])+"|\n"
             else:
-                text += "|"+str(rez['rank'])+" ("+rankDif+")|"+rez["givenName"]+ " "+ rez["familyName"] + "|"+rez["nation"]+"|"+str(rez['score'])+"|\n"
+                text += "|"+str(rez['rank'])+" ("+ rankDif +")|"+rez["givenName"]+ " "+ rez["familyName"] + bib+"|"+rez["nation"]+"|"+str(rez['score'])+"|\n"
 
 
     if category != "Team":
@@ -121,10 +133,18 @@ def getOverallRanking(raceInfo, url):
     text += "|:-|:-|:-|:-|\n"
     for rez in ranking['scores']:
         if rez['rank'] <= 10:
-            rankDif = str(rez["rankDiff"])
-            if rankDif == "None":
-                rankDif = "0"
-            text += "|" + str(rez['rank']) + "("+rankDif+")|" + rez["givenName"] + " " + rez["familyName"] + "|" + rez["nation"] + "|" + str(rez['score']) + "|\n"
+            rankDif = rez["rankDiff"]
+            if str(rankDif) == "None":
+                rankDif = 0
+            if rankDif*-1 > 0:
+                rankDif = "+" + str(rankDif*-1)
+            else:
+                rankDif = str(rankDif*-1)
+            if rez['rank'] == 1:
+                bib = "🟡"
+            else:
+                bib = ""
+            text += "|" + str(rez['rank']) + "("+rankDif+")|" + rez["givenName"] + " " + rez["familyName"] + ""+bib+"|" + rez["nation"] + "|" + str(rez['score']) + "|\n"
 
     return text
 
