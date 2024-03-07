@@ -62,7 +62,35 @@ def makeRaceThread(raceInfo):
             "I assume this is still valid: **This stream is unavailable in** [**France**](https://www.lequipe.fr/)**,** [**Denmark**](https://play.tv2.dk/) **and** [**Norway**](https://www.tv2.no/sport/)**.**\n\n"
             )
 
+    weather = getWeather(raceInfo)
+    text+= "Closest weather station I could find :  [Wunderground](" + weather + ") \n\n"
+
     return text
+
+def getWeather(raceInfo):
+    url = "https://www.wunderground.com/forecast/us/ut/midway/"
+
+    page = requests.get("https://en.wikipedia.org/wiki/2023%E2%80%9324_Biathlon_World_Cup")
+
+    # scrape webpage
+    soup = BeautifulSoup(page.content, 'html.parser')
+
+    # create object
+    object = soup.find(string=raceInfo['eventOrganizer']).find_parent().get('href')
+
+    page = requests.get("https://en.wikipedia.org" + object)
+
+    soup = BeautifulSoup(page.content, 'html.parser')
+    lat = soup.find(class_="geo-dms").find('span', class_="latitude").text
+    long = soup.find(class_="geo-dms").find('span', class_="longitude").text
+    if 'W' in long:
+        lat = lat.split('′')[0].replace('°', '.')
+        long = long.split('′')[0].replace('°', '.')
+        return url + lat + ',-' + long
+    else:
+        lat = lat.split('′')[0].replace('°', '.')
+        long = long.split('′')[0].replace('°', '.')
+        return url + lat + ',' + long
 
 def getRanking(raceInfo, url, blueBib):
     race_type_four = raceInfo['raceId'][-4:]
@@ -161,7 +189,7 @@ def getOverallRanking(raceInfo, url, blueBib):
                 bib = "🔵"
             else:
                 bib = ""
-            text += "|" + str(rez['rank']) + "("+rankDif+")|" + rez["givenName"] + " " + rez["familyName"] + ""+bib+"|" + rez["nation"] + "|" + str(rez['score']) + "|\n"
+            text += "|" + str(rez['rank']) + "("+rankDif+")|" + rez["givenName"] + " " + rez["familyName"] + " "+bib+"|" + rez["nation"] + "|" + str(rez['score']) + "|\n"
 
     return text
 
