@@ -20,23 +20,27 @@ def main():
                          password=os.environ['REDDIT_PASSWORD'])
 
     sys.stdout.flush()
-    for comment in reddit.subreddit("biathlon").stream.comments():
-        if "!biathlonResult" in comment.body:
-            print('found !biathlonResult')
-            raceregex = re.compile(r"(BT[A-X0-9_]+)")
-            mo1 = raceregex.search(comment.body)
-            if mo1.group(1):
-                older_than_five = datetime.now(timezone.utc).timestamp() - 500
-                if comment.created_utc > older_than_five:
-                    print('for race ' + mo1.group(1))
-                    # print(report(mo1.group(1), os.environ['SOURCE_URL']))
-                    try:
-                        comment.reply(report(mo1.group(1), os.environ['SOURCE_URL']))
-                        print('output finished for ' + mo1.group(1))
-                    except:
-                        print("An exception occurred")
-                else:
-                    print('too old')
+    raceid = input("have a race id (empty to skip) : ")
+    if raceid:
+        print(report(raceid, os.environ['SOURCE_URL']))
+    else:
+        for comment in reddit.subreddit("biathlon").stream.comments():
+            if "!biathlonResult" in comment.body:
+                print('found !biathlonResult')
+                raceregex = re.compile(r"(BT[A-X0-9_]+)")
+                mo1 = raceregex.search(comment.body)
+                if mo1.group(1):
+                    older_than_five = datetime.now(timezone.utc).timestamp() - 500
+                    if comment.created_utc > older_than_five:
+                        print('for race ' + mo1.group(1))
+                        # print(report(mo1.group(1), os.environ['SOURCE_URL']))
+                        try:
+                            comment.reply(report(mo1.group(1), os.environ['SOURCE_URL']))
+                            print('output finished for ' + mo1.group(1))
+                        except:
+                            print("An exception occurred")
+                    else:
+                        print('too old')
 
 
 def report(raceId, url):
