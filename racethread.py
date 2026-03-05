@@ -5,7 +5,7 @@ import json
 from datetime import timezone
 import pytz
 import sys
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, UTC
 from dotenv import load_dotenv
 import re
 import time
@@ -32,21 +32,21 @@ def main():
     blueBib = getBlueBib()
     for rez in jsonResponse["athletesList"]:
         # is in GMT
-        raceTime = datetime.utcfromtimestamp(rez['epoch']).strftime('%d/%m/%Y')
+        raceTime = datetime.fromtimestamp(rez['epoch'], UTC).strftime('%d/%m/%Y')
         nowTime = (datetime.now(timezone.utc) - timedelta(days=0)).strftime('%d/%m/%Y')
 
         if rez['eventClass'] in ['BTSWRLCP', 'BTSWRLCH']:
             if raceTime == nowTime:
                 rez['eventDescription'] = rez['eventDescription'].replace('BMW ', '').replace('IBU ', '').replace(' Biathlon', '')
                 title = "Race Thread: "+ rez['eventDescription'] +" "+ jsonResponse['seasonId'][:2] + "/"+ jsonResponse['seasonId'][2:] + " "+rez['eventOrganizer']+" - "+rez['shortDescription']+""
-                title = re.sub(' [1-9x]+(\.)?([0-9]) km', '', title)
+                title = re.sub(r' [1-9x]+(\.)?([0-9]) km', '', title)
                 body = makeRaceThread(rez)
                 body += getRanking(rez, os.environ['SOURCE_URL'], blueBib)
                 # reddit.subreddit('biathlon').submit(title, body, "", "92defafc-b47c-11e6-a893-0e403872dda2", "Race Thread")
                 reddit.validate_on_submit = 1
                 # reddit.subreddit('testingground4bots').submit(title, body, "", "7c7255be-02b3-11eb-95d1-0e921f8587e3", "Meta")
                 print("posted "+ title)
-                # print(body)
+                print(body)
                 return
 
     print("end race thread at : " + str(time.time()))
@@ -70,15 +70,20 @@ def makeRaceThread(raceInfo):
 def getWeather(raceInfo):
     url = "https://www.wunderground.com/forecast/us/ut/midway/"
 
-    page = requests.get("https://en.wikipedia.org/wiki/2023%E2%80%9324_Biathlon_World_Cup")
+    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6)" \
+         "AppleWebKit/537.36 (KHTML, like Gecko)" \
+         "Chrome/60.0.3112.113"
+    page = requests.get("https://en.wikipedia.org/wiki/2025%E2%80%9326_Biathlon_World_Cup", headers={"User-Agent": ua})
 
     # scrape webpage
     soup = BeautifulSoup(page.content, 'html.parser')
 
     # create object
-    object = soup.find(string=raceInfo['eventOrganizer']).find_parent().get('href')
-
-    page = requests.get("https://en.wikipedia.org" + object)
+    try:
+        object = soup.find(string=raceInfo['eventOrganizer']).find_parent().get('href')
+        page = requests.get("https://en.wikipedia.org" + object, headers={"User-Agent": ua})
+    except:
+        page = requests.get("https://en.wikipedia.org/" + raceInfo['eventOrganizer'], headers={"User-Agent": ua})
 
     soup = BeautifulSoup(page.content, 'html.parser')
     lat = soup.find(class_="geo-dms").find('span', class_="latitude").text
@@ -116,7 +121,7 @@ def getRanking(raceInfo, url, blueBib):
     womenBlueBib = blueBib[0]
     menBlueBib = blueBib[1]
 
-    text = "Current top 10 "+ re.sub(' [1-9]+(\.)?([0-9]) km', '', raceInfo['shortDescription']) +" Cup rankings:\n\n"
+    text = "Current top 10 "+ re.sub(r' [1-9]+(\.)?([0-9]) km', '', raceInfo['shortDescription']) +" Cup rankings:\n\n"
 
     if category == "Team":
         text += "|#|Nation|Points|\n"
@@ -195,21 +200,24 @@ def getOverallRanking(raceInfo, url, blueBib):
 
 def getBlueBib():
     # get URL
-    page = requests.get("https://en.wikipedia.org/wiki/2023%E2%80%9324_Biathlon_World_Cup#Overall_3")
+    ua = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_6)" \
+         "AppleWebKit/537.36 (KHTML, like Gecko)" \
+         "Chrome/60.0.3112.113"
+    page = requests.get("https://en.wikipedia.org/wiki/2025%E2%80%9326_Biathlon_World_Cup#Overall_leaders", headers={"User-Agent": ua})
 
     # scrape webpage
     soup = BeautifulSoup(page.content, 'html.parser')
 
     # create object
-    object = soup.find(id="mw-content-text")
+    #object = soup.find(id="mw-content-text")
 
     # find tags
-    items = object.find(id="Under_25_4").findParent().find_next('table').find_all('tr')
+    items = soup.find(id="Under_23").find_parent().find_next('table').find_all('tr')
     result = items[1].find_all('a')[1]
     women_blue_bib = result.text.split(' ')[0]
 
     # find tags
-    items = object.find(id="Under_25_2").findParent().find_next('table').find_all('tr')
+    items = soup.find(id="Under_23_2").find_parent().find_next('table').find_all('tr')
     result = items[1].find_all('a')[1]
     men_blue_bib = result.text.split(' ')[0]
 
