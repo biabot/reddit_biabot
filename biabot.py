@@ -5,7 +5,7 @@ import json
 import time
 from datetime import timezone
 import datetime
-from datetime import datetime
+from datetime import datetime, UTC
 import re
 import sys
 from dotenv import load_dotenv
@@ -20,23 +20,27 @@ def main():
                          password=os.environ['REDDIT_PASSWORD'])
 
     sys.stdout.flush()
-    for comment in reddit.subreddit("biathlon").stream.comments():
-        if "!biathlonResult" in comment.body:
-            print('found !biathlonResult')
-            raceregex = re.compile(r"(BT[A-X0-9_]+)")
-            mo1 = raceregex.search(comment.body)
-            if mo1.group(1):
-                older_than_five = datetime.now(timezone.utc).timestamp() - 500
-                if comment.created_utc > older_than_five:
-                    print('for race ' + mo1.group(1))
-                    # print(report(mo1.group(1), os.environ['SOURCE_URL']))
-                    try:
-                        comment.reply(report(mo1.group(1), os.environ['SOURCE_URL']))
-                        print('output finished for ' + mo1.group(1))
-                    except:
-                        print("An exception occurred")
-                else:
-                    print('too old')
+    raceid = input("have a race id (empty to skip) : ")
+    if raceid:
+        print(report(raceid, os.environ['SOURCE_URL']))
+    else:
+        for comment in reddit.subreddit("biathlon").stream.comments():
+            if "!biathlonResult" in comment.body:
+                print('found !biathlonResult')
+                raceregex = re.compile(r"(BT[A-X0-9_]+)")
+                mo1 = raceregex.search(comment.body)
+                if mo1.group(1):
+                    older_than_five = datetime.now(timezone.utc).timestamp() - 500
+                    if comment.created_utc > older_than_five:
+                        print('for race ' + mo1.group(1))
+                        # print(report(mo1.group(1), os.environ['SOURCE_URL']))
+                        try:
+                            comment.reply(report(mo1.group(1), os.environ['SOURCE_URL']))
+                            print('output finished for ' + mo1.group(1))
+                        except:
+                            print("An exception occurred")
+                    else:
+                        print('too old')
 
 
 def report(raceId, url):
@@ -120,7 +124,7 @@ def report(raceId, url):
 
     out = ("Welcome to the stats for the " + results['shortDescription'] +
            ' in ' + results['eventOrganizer'] +
-           ' on this ' + datetime.utcfromtimestamp(results['time']).strftime('%d %B %Y') +
+           ' on this ' + datetime.fromtimestamp(results['time'], UTC).strftime('%d %B %Y') +
            '\n\n')
     out += weather(results)
     out += podium(sorted(top20_ending, key=lambda d: d['rank']))
@@ -156,13 +160,13 @@ def reddit_format(title, data, shooting=False, is_relay=False, penalty=False):
     out += "\n"
     if shooting:
         if penalty:
-            out += "|\#|Athlete|Time|shooting|with penalty|\n"
+            out += r"|\#|Athlete|Time|shooting|with penalty|\n"
             out += "|:-|:-|:-|:-|:-|\n"
         else:
-            out += "|\#|Athlete|Time|shooting|\n"
+            out += r"|\#|Athlete|Time|shooting|\n"
             out += "|:-|:-|:-|:-|\n"
     else:
-        out += "|\#|Athlete|Country|Time|\n"
+        out += r"|\#|Athlete|Country|Time|\n"
         out += "|:-|:-|:-|:-|\n"
     for da in data:
         if shooting:
@@ -180,7 +184,7 @@ def reddit_format(title, data, shooting=False, is_relay=False, penalty=False):
 def reddit_format_dsq(title, data, jury=""):
     out = f"**{title}**\n"
     out += "\n"
-    out += "|\#|Athlete|Country|\n"
+    out += r"|\#|Athlete|Country|\n"
     out += "|:-|:-|:-|\n"
     for da in data:
         out += f"|{da['rank']}| {da['name']} |{da['country']}\n"
