@@ -5,7 +5,7 @@ import json
 import time
 from datetime import timezone
 import datetime
-from datetime import datetime
+from datetime import datetime, UTC
 import re
 import sys
 from dotenv import load_dotenv
@@ -124,7 +124,7 @@ def report(raceId, url):
 
     out = ("Welcome to the stats for the " + results['shortDescription'] +
            ' in ' + results['eventOrganizer'] +
-           ' on this ' + datetime.utcfromtimestamp(results['time']).strftime('%d %B %Y') +
+           ' on this ' + datetime.fromtimestamp(results['time'], UTC).strftime('%d %B %Y') +
            '\n\n')
     out += weather(results)
     out += podium(sorted(top20_ending, key=lambda d: d['rank']))
@@ -160,13 +160,13 @@ def reddit_format(title, data, shooting=False, is_relay=False, penalty=False):
     out += "\n"
     if shooting:
         if penalty:
-            out += "|\#|Athlete|Time|shooting|with penalty|\n"
+            out += r"|\#|Athlete|Time|shooting|with penalty|\n"
             out += "|:-|:-|:-|:-|:-|\n"
         else:
-            out += "|\#|Athlete|Time|shooting|\n"
+            out += r"|\#|Athlete|Time|shooting|\n"
             out += "|:-|:-|:-|:-|\n"
     else:
-        out += "|\#|Athlete|Country|Time|\n"
+        out += r"|\#|Athlete|Country|Time|\n"
         out += "|:-|:-|:-|:-|\n"
     for da in data:
         if shooting:
@@ -184,7 +184,7 @@ def reddit_format(title, data, shooting=False, is_relay=False, penalty=False):
 def reddit_format_dsq(title, data, jury=""):
     out = f"**{title}**\n"
     out += "\n"
-    out += "|\#|Athlete|Country|\n"
+    out += r"|\#|Athlete|Country|\n"
     out += "|:-|:-|:-|\n"
     for da in data:
         out += f"|{da['rank']}| {da['name']} |{da['country']}\n"
