@@ -8,12 +8,24 @@
 # database or a cache. For examples, see the Awesome Compose repository:
 # https://github.com/docker/awesome-compose
 services:
-  server:
+  racethread:
     build:
       context: .
-    ports:
-      - 8000:8000
-    env_file: ".env"
+    command: python racethread.py
+    env_file: .env
+    volumes:
+      - .:/app
+    working_dir: /app
+    restart: unless-stopped
+  biabot:
+    build:
+      context: .
+    command: python biabot.py
+    env_file: .env
+    volumes:
+      - .:/app
+    working_dir: /app
+    restart: unless-stopped
 
 # The commented out section below is an example of how to define a PostgreSQL
 # database that your application can use. `depends_on` tells Docker Compose to
@@ -47,4 +59,3 @@ services:
 # secrets:
 #   db-password:
 #     file: db/password.txt
-
